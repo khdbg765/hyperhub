@@ -5,9 +5,8 @@ local list = {
 }
 
 for id, domain in pairs(list) do
-    if tostring(gameid) == id then
+    if tostring(gameid) == tostring(id) then
         domains = domain
-        break
     end
 end
 
@@ -22,5 +21,7 @@ else
     loadstring(game:HttpGet("https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/gui/main.lua"))()
     if _G.HRHelper or HRHelper then
         HRHelper.showToast("Game Not Supported")
+        local format = string.format("https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/rivals/rival.lua")
+        loadstring(game:HttpGet(format))()
     end
 end
