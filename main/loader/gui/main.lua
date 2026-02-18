@@ -29,7 +29,7 @@ _G.HRSetting = HRSetting
 _G.HRHelper = HRHelper
 _G.Color = Color
 
-
+local saveHR = _G.HRSetting
 local activeToast = {}
 local ToastYPos = 0.9
 
@@ -143,6 +143,75 @@ function HRHelper.showToast(txt, time)
 		    end)
         end)
 	end)
+end
+
+function HRSetting:onLoad()
+	saveHR = self
+end
+HRSetting:onLoad()
+
+function HRHelper:showNotif(text, btnRight, btnLeft)
+    local TargetUI = saveHR.ScreenUI
+    
+    if not TargetUI then return end
+
+    local NotifFrame = Instance.new("Frame", TargetUI)
+    NotifFrame.Name = "HR_Notification"
+    NotifFrame.Size = UDim2.new(0, 300, 0, 150)
+    NotifFrame.Position = UDim2.new(0.36, 0, 0.35, 0) 
+    NotifFrame.BackgroundColor3 = Color.Background
+    NotifFrame.ZIndex = 150
+    
+    Instance.new("UICorner", NotifFrame).CornerRadius = UDim.new(0, 12)
+    
+    local stroke = Instance.new("UIStroke", NotifFrame)
+    stroke.Color = Color.Primary
+    stroke.Thickness = 2
+
+    local Label = Instance.new("TextLabel", NotifFrame)
+    Label.Size = UDim2.new(1, 0, 0.5, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.TextColor3 = Color3.new(1, 1, 1)
+    Label.Font = Enum.Font.SourceSansBold
+    Label.TextSize = 18
+    Label.ZIndex = 151
+
+    local function createStyledBtn(name, pos, callback, isPrimary)
+        local btn = Instance.new("TextButton", NotifFrame)
+        btn.Size = UDim2.new(0.4, 0, 0.25, 0)
+        btn.Position = pos
+        btn.Text = name
+        btn.ZIndex = 152
+        btn.TextColor3 = Color.White
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 18
+        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
+
+        local grad = Instance.new("UIGradient", btn)
+        grad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, isPrimary and Color.Primary or Color3.fromRGB(100, 100, 100)),
+            ColorSequenceKeypoint.new(1, isPrimary and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(50, 50, 50))
+        })
+        grad.Enabled = false
+
+        btn.MouseEnter:Connect(function()
+            grad.Enabled = true
+        end)
+
+        btn.MouseLeave:Connect(function()
+            grad.Enabled = false
+        end)
+
+        btn.MouseButton1Click:Connect(function()
+            NotifFrame:Destroy()
+            callback()
+        end)
+    end
+
+    createStyledBtn(btnRight.name, UDim2.new(0.55, 0, 0.65, 0), btnRight.callback, true)
+    createStyledBtn(btnLeft.name, UDim2.new(0.05, 0, 0.65, 0), btnLeft.callback, true)
 end
 
 function HRSetting:createMainGUI()
@@ -692,10 +761,17 @@ function HRSetting:createHelpBtn()
 	MinBtn.ZIndex = 25
 
     DelBtn.MouseButton1Click:Connect(function()
-        if self.ScreenUI then
-            self.ScreenUI:Destroy()
-            HRSetting = nil
-        end
+        HRHelper:showNotif("Are U Sure To Delete This Gui?", 
+            {name = "Yes", callback = function() 
+                 HRHelper:showNotif("Do U Really sure?", 
+                    {name = "Yes", callback = function() 
+                       self.ScreenUI:Destroy()
+				       HRSetting = nil
+				       HRHelper.showToast("Destroyed")
+                    end}, 
+                 {name = "Cancel", callback = function()end})
+             end}, 
+        {name = "Cancel", callback = function()end})
     end)
     
     MinBtn.MouseButton1Click:Connect(function()
@@ -743,16 +819,14 @@ function HRSetting:createOpenBtn()
     self.openBtn = opn
 end
 
-
-local selfFlag = HRSetting
 function HRSetting:init()
+    saveHR = self
     self:createMainGUI()
     self:createTabList()
 	self:createHelpBtn()
     self:createOpenBtn()
 
     self:addTab("Home", 1)
-	selfFlag = self
 end
 
 HRSetting:init()
@@ -776,7 +850,8 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == SelectedKeybinds then 
 	    isVisible = not isVisible
         selfFlag.ScreenUI.Enabled = isVisible
+		HRHelper.showToast(isVisible and "Show" or "Hide")
     end
 end)
 
-HRHelper.showToast("INFO : Press M to Open Menu", 3)
+HRHelper.showToast("INFO : Press RightControl to Open Menu", 3)
