@@ -3,7 +3,6 @@ local HRHelper = HRHelper or _G.HRHelper
 
 --Rivals
 
-if game.GameId ~= 17625359962 then return end
 HRSetting:addTab("Movements")
 HRSetting:addTab("Combat")
 HRSetting:addTab("Visual")
