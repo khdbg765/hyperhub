@@ -1,11 +1,11 @@
 local gameid = game.GameId
 local domains = nil
 local list = {
-  [17625359962] = "rivals/rival.lua", --rivals
+  ["17625359962"] = "rivals/rival.lua", --rivals
 }
 
 for id, domain in pairs(list) do
-    if domain and gameid == id then
+    if tostring(gameid) == id then
         domains = domain
         break
     end
