@@ -15,7 +15,8 @@ local hyper = {
     end,
     loadGUI = function()
         if not tryCheck() then
-            hyper.load(guiLink)
+            local link = game:HttpGet(guiLink)
+            return loadstring(link)()
         end
     end,
     list = function()
