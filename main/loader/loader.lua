@@ -1,15 +1,3 @@
-
-repeat 
-    wait() 
-until (game:IsLoaded() 
-     and 
-     game:FindFirstChild("CoreGui") 
-     and 
-     pcall(function() 
-          return game:GetService("CoreGui")
-     end)
-)
-
 local g = game.GameId
 local guiLink = "https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/gui/main.lua"
 
@@ -45,8 +33,7 @@ local hyper = {
 }
 
 hyper.loadGUI()
-repeat wait() until tryCheck()
-
+wait(1.5)
 local res, set, help = tryCheck()
 local github = "https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/"
 
