@@ -36,8 +36,10 @@ FOVCircle.Transparency = 0.7
 FOVCircle.Color = Color3.fromRGB(0, 170, 255)
 FOVCircle.Visible = false
 
+--- // FUNGSI TARGETING (FIXED) // ---
+
 local function GetClosestTarget()
-    local cam = workspace.CurrentCamera
+    local CurrentCam = workspace.CurrentCamera -- Selalu ambil yang terbaru
     local closest, shortestDistance = nil, AimbotSettings.FOV
     local mousePos = Vector2.new(Mouse.X, Mouse.Y)
     
@@ -49,7 +51,7 @@ local function GetClosestTarget()
         local part = player.Character:FindFirstChild(AimbotSettings.Part)
         
         if hum and hum.Health > 0 and part then
-            local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
+            local screenPos, onScreen = CurrentCam:WorldToViewportPoint(part.Position)
             if onScreen then
                 local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
                 if distance < shortestDistance then
@@ -61,6 +63,8 @@ local function GetClosestTarget()
     end
     return closest
 end
+
+--- // LOOP UTAMA // ---
 
 RS.RenderStepped:Connect(function()
     local CurrentCamera = workspace.CurrentCamera
@@ -133,6 +137,8 @@ RS.RenderStepped:Connect(function()
     end
 end)
 
+--- // UI MENU // ---
+
 HRSetting:addTab("Movements")
 HRSetting:addTab("Combat")
 HRSetting:addTab("Visual")
@@ -141,13 +147,18 @@ HRSetting:addToggle("Movements", "Speed", "speed")
 HRSetting:addSlider("Movements", "Speed Slider", 35, 145, "changeSpeed")
 
 HRSetting:addToggle("Combat", "Aimbot", "aimbot")
+HRSetting:addToggle("Combat", "Aimbot Use Mouse", "usemouse")
 HRSetting:addSlider("Combat", "Aimbot Range", 50, 500, "changeAimbotRange")
+HRSetting:addSlider("Combat", "Aimbot Smoothness", 0.01, 1, "changeAimbotSmoothness")
+HRSetting:addSlider("Combat", "Aimbot Prediction", 0.001, 0.05, "changeAimbotPrediction")
 HRSetting:addToggle("Combat", "SilentAim", "silentAim")
 HRSetting:addSlider("Combat", "Silent Aim Chances", 1, 100, "changeSilentChance")
 
 HRSetting:addToggle("Visual", "Esp", "esp")
 HRSetting:addToggle("Visual", "SetEspType", "", true)
 HRSetting:addCheckbox("Visual", {{"EspName", "nameesp"}, {"EspBody", "bodyesp"}, {"EspAll", "allesp"}}, "EspAll")
+
+--- // HELPER FUNCTIONS // ---
 
 function HRHelper:speed()
     togSpeed = not togSpeed
@@ -172,8 +183,25 @@ function HRHelper:aimbot()
     end
 end
 
+function HRHelper:usemouse()
+    AimbotSettings.UseMouse = not AimbotSettings.UseMouse
+    if AimbotSettings.UseMouse then 
+        HRHelper.showToast("Mode : Mouse Move") 
+    else 
+        HRHelper.showToast("Mode : Camera Lock") 
+    end
+end
+
 function HRHelper:changeAimbotRange(val) 
     AimbotSettings.FOV = val
+end
+
+function HRHelper:changeAimbotSmoothness(val)
+    AimbotSettings.Smoothness = val
+end
+
+function HRHelper:changeAimbotPrediction(val)
+    AimbotSettings.Prediction = val
 end
 
 function HRHelper:silentAim()
