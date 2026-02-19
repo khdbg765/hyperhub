@@ -1,27 +1,58 @@
-local gameid = game.GameId
-local domains = nil
-local list = {
-  ["17625359962"] = "rivals/rival.lua", --rivals
-}
 
-for id, domain in pairs(list) do
-    if tostring(gameid) == tostring(id) then
-        domains = domain
-    end
+repeat 
+    wait() 
+until (game:IsLoaded() 
+     and 
+     game:FindFirstChild("CoreGui") 
+     and 
+     pcall(function() 
+          return game:GetService("CoreGui")
+     end)
+)
+
+local g = game.GameId
+local guiLink = "https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/gui/main.lua"
+
+local tryCheck = function()
+    local HRH = HRHelper or _G.HRHelper
+    local HRS = HRSetting or _G.HRSetting
+    if HRH and HRS then return true, HRS, HRH end
+    return false, nil, nil
 end
 
-if domains then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/gui/main.lua"))()
+local hyper = {
+    load = function(http)
+        local link = game:HttpGet(http)
+        return loadstring(link)()
+    end,
+    loadGUI = function()
+        if not tryCheck() then
+            hyper.load(guiLink)
+        end
+    end,
+    list = function()
+        if g == 17625359962 then return "rivals/rival" end
+        return nil
+    end,
+    fail = function()
+        local re, set, help = tryCheck()
+        if re then
+            help.showToast("Game Not Supported")
+            task.wait(0.3)
+            help.showToast("U Can Only Use Some Function")
+        end
+    end
+}
 
-    if HRSetting or _G.HRSetting then
-       local format = string.format("https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/%s", domains)
-       loadstring(game:HttpGet(format))()
-    end
-else
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/gui/main.lua"))()
-    if _G.HRHelper or HRHelper then
-        HRHelper.showToast("Game Not Supported")
-        local format = string.format("https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/main/loader/rivals/rival.lua")
-        loadstring(game:HttpGet(format))()
-    end
+hyper.loadGUI()
+repeat wait() until tryCheck()
+
+local res, set, help = tryCheck()
+local github = "https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/"
+
+if res then
+    local listRes = hyper.list()
+    if not listRes then hyper.fail() return end
+    local format = string.format("%smain/loader/%s.lua", github, listRes)
+    hyper.load(format)
 end
