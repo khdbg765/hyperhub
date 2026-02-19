@@ -20,9 +20,9 @@ local AimbotSettings = {
     TeamCheck = true,
     WallCheck = true,
     FOV = 120,
-    Smoothness = 0.2,
+    Smoothness = 0.7,
     Part = "Head",
-    Prediction = 0.01,
+    Prediction = 1.2,
     UseMouse = true,
     SilentChance = 100
 }
@@ -169,8 +169,8 @@ HRSetting:addSlider("Movements", "Speed Slider", 16, 200, "changeSpeed")
 HRSetting:addToggle("Combat", "Aimbot", "aimbot")
 HRSetting:addToggle("Combat", "Aimbot Use Mouse", "usemouse")
 HRSetting:addSlider("Combat", "Aimbot Range", 50, 800, "changeAimbotRange")
-HRSetting:addSlider("Combat", "Aimbot Smoothness", 0.01, 1, "changeAimbotSmoothness")
-HRSetting:addSlider("Combat", "Aimbot Prediction", 0.001, 0.1, "changeAimbotPrediction")
+--HRSetting:addSlider("Combat", "Aimbot Smoothness", 0.01, 1, "changeAimbotSmoothness")
+--HRSetting:addSlider("Combat", "Aimbot Prediction", 0.001, 0.1, "changeAimbotPrediction")
 HRSetting:addToggle("Combat", "SilentAim", "silentAim")
 HRSetting:addSlider("Combat", "Silent Aim Chances", 1, 100, "changeSilentChance")
 
