@@ -14,10 +14,8 @@ local hyper = {
         return loadstring(link)()
     end,
     loadGUI = function()
-        if not tryCheck() then
-            local link = game:HttpGet(guiLink)
-            return loadstring(link)()
-        end
+        local link = game:HttpGet(guiLink)
+        loadstring(link)()
     end,
     list = function()
         if g == 17625359962 then return "rivals/rival" end
