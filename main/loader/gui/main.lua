@@ -173,7 +173,7 @@ function HRHelper.showToast(txt, time)
         if tstGUI then
             local close = TS:Create(tstGUI, info, {
                 GroupTransparency = 1,
-                Position = UDim2.new(1.3, 0, tstGUI.Position.sY.Scale, 0)
+                Position = UDim2.new(1.3, 0, tstGUI.Position.Y.Scale, 0)
             })
             close:Play()
             close.Completed:Connect(function()
