@@ -8,12 +8,14 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
+-- // STATES // --
 local togAimbot = false
 local togSilentAim = false
 local togEsp = false
 local togSpeed = false
 local ESP_Cache = {}
 
+-- // SETTINGS (LENGKAP) // --
 local AimbotSettings = {
     TeamCheck = true,
     WallCheck = true,
@@ -28,6 +30,7 @@ local AimbotSettings = {
 local espConfig = { espTarget = "EspAll" }
 local speedConfig = { value = 16 }
 
+-- // VISUAL FOV // --
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1
 FOVCircle.NumSides = 100
@@ -36,12 +39,11 @@ FOVCircle.Transparency = 0.7
 FOVCircle.Color = Color3.fromRGB(0, 170, 255)
 FOVCircle.Visible = false
 
---- // FUNGSI TARGETING (FIXED) // ---
+--- // CORE TARGETING LOGIC // ---
 
 local function GetClosestTarget()
-    local CurrentCam = workspace.CurrentCamera -- Selalu ambil yang terbaru
+    local CurrentCam = workspace.CurrentCamera
     local closest, shortestDistance = nil, AimbotSettings.FOV
-    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer or not player.Character then continue end
@@ -53,10 +55,23 @@ local function GetClosestTarget()
         if hum and hum.Health > 0 and part then
             local screenPos, onScreen = CurrentCam:WorldToViewportPoint(part.Position)
             if onScreen then
+                local mousePos = Vector2.new(Mouse.X, Mouse.Y)
                 local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                
                 if distance < shortestDistance then
-                    shortestDistance = distance
-                    closest = part
+                    -- Wallcheck manual
+                    local ray = CurrentCam:ViewportPointToRay(screenPos.X, screenPos.Y)
+                    local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
+                    
+                    if AimbotSettings.WallCheck then
+                        if raycastResult and raycastResult.Instance:IsDescendantOf(player.Character) then
+                            shortestDistance = distance
+                            closest = part
+                        end
+                    else
+                        shortestDistance = distance
+                        closest = part
+                    end
                 end
             end
         end
@@ -64,46 +79,49 @@ local function GetClosestTarget()
     return closest
 end
 
---- // LOOP UTAMA // ---
+--- // MAIN LOOP // ---
 
 RS.RenderStepped:Connect(function()
     local CurrentCamera = workspace.CurrentCamera
     FOVCircle.Position = Vector2.new(Mouse.X, Mouse.Y + 36)
     FOVCircle.Radius = AimbotSettings.FOV
     
+    -- AIMBOT LOGIC --
     if togAimbot then
         local target = GetClosestTarget()
         if target then
-            local targetPos = target.Position + (target.Parent.HumanoidRootPart.Velocity * AimbotSettings.Prediction)
+            -- Prediction Logic
+            local velocity = target.Parent.HumanoidRootPart.Velocity
+            local predictedPos = target.Position + (velocity * AimbotSettings.Prediction)
+            
             if AimbotSettings.UseMouse then
-                local screenPoint = CurrentCamera:WorldToScreenPoint(targetPos)
-                if screenPoint.Z > 0 then
-                    local delta = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(Mouse.X, Mouse.Y)) * AimbotSettings.Smoothness
-                    mousemoverel(delta.X, delta.Y)
-                end
+                local screenPoint = CurrentCamera:WorldToScreenPoint(predictedPos)
+                local delta = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(Mouse.X, Mouse.Y))
+                mousemoverel(delta.X * AimbotSettings.Smoothness, delta.Y * AimbotSettings.Smoothness)
             else
-                CurrentCamera.CFrame = CurrentCamera.CFrame:Lerp(CFrame.new(CurrentCamera.CFrame.Position, targetPos), AimbotSettings.Smoothness)
+                CurrentCamera.CFrame = CurrentCamera.CFrame:Lerp(CFrame.new(CurrentCamera.CFrame.Position, predictedPos), AimbotSettings.Smoothness)
             end
         end
     end
 
+    -- SILENT AIM LOGIC --
     if togSilentAim and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-        local chance = math.random(1, 100)
-        if chance <= AimbotSettings.SilentChance then
+        if math.random(1, 100) <= AimbotSettings.SilentChance then
             local target = GetClosestTarget()
             if target then
-                local targetPos = target.Position + (target.Parent.HumanoidRootPart.Velocity * AimbotSettings.Prediction)
-                CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, targetPos)
+                local velocity = target.Parent.HumanoidRootPart.Velocity
+                local predictedPos = target.Position + (velocity * AimbotSettings.Prediction)
+                CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, predictedPos)
             end
         end
     end
 
+    -- SPEED LOGIC --
     if togSpeed and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = speedConfig.value
-    elseif not togSpeed and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
     end
-
+    
+    -- ESP LOGIC --
     if togEsp then
         for _, player in ipairs(Players:GetPlayers()) do
             if player == LocalPlayer then continue end
@@ -137,28 +155,31 @@ RS.RenderStepped:Connect(function()
     end
 end)
 
---- // UI MENU // ---
+--- // UI MENU (SEMUA SLIDER DI SINI) // ---
 
 HRSetting:addTab("Movements")
 HRSetting:addTab("Combat")
 HRSetting:addTab("Visual")
 
+-- Movements
 HRSetting:addToggle("Movements", "Speed", "speed")
-HRSetting:addSlider("Movements", "Speed Slider", 35, 145, "changeSpeed")
+HRSetting:addSlider("Movements", "Speed Slider", 16, 200, "changeSpeed")
 
+-- Combat (LENGKAP)
 HRSetting:addToggle("Combat", "Aimbot", "aimbot")
 HRSetting:addToggle("Combat", "Aimbot Use Mouse", "usemouse")
-HRSetting:addSlider("Combat", "Aimbot Range", 50, 500, "changeAimbotRange")
+HRSetting:addSlider("Combat", "Aimbot Range", 50, 800, "changeAimbotRange")
 HRSetting:addSlider("Combat", "Aimbot Smoothness", 0.01, 1, "changeAimbotSmoothness")
-HRSetting:addSlider("Combat", "Aimbot Prediction", 0.001, 0.05, "changeAimbotPrediction")
+HRSetting:addSlider("Combat", "Aimbot Prediction", 0.001, 0.1, "changeAimbotPrediction")
 HRSetting:addToggle("Combat", "SilentAim", "silentAim")
 HRSetting:addSlider("Combat", "Silent Aim Chances", 1, 100, "changeSilentChance")
 
+-- Visual
 HRSetting:addToggle("Visual", "Esp", "esp")
 HRSetting:addToggle("Visual", "SetEspType", "", true)
 HRSetting:addCheckbox("Visual", {{"EspName", "nameesp"}, {"EspBody", "bodyesp"}, {"EspAll", "allesp"}}, "EspAll")
 
---- // HELPER FUNCTIONS // ---
+--- // HELPER FUNCTIONS (STRUKTUR REQUEST) // ---
 
 function HRHelper:speed()
     togSpeed = not togSpeed
@@ -166,12 +187,13 @@ function HRHelper:speed()
         HRHelper.showToast("Speed : Enabled") 
     else 
         HRHelper.showToast("Speed : Disabled") 
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
+        end
     end
 end
 
-function HRHelper:changeSpeed(val)
-    speedConfig.value = val
-end
+function HRHelper:changeSpeed(val) speedConfig.value = val end
 
 function HRHelper:aimbot()
     togAimbot = not togAimbot
@@ -192,17 +214,9 @@ function HRHelper:usemouse()
     end
 end
 
-function HRHelper:changeAimbotRange(val) 
-    AimbotSettings.FOV = val
-end
-
-function HRHelper:changeAimbotSmoothness(val)
-    AimbotSettings.Smoothness = val
-end
-
-function HRHelper:changeAimbotPrediction(val)
-    AimbotSettings.Prediction = val
-end
+function HRHelper:changeAimbotRange(val) AimbotSettings.FOV = val end
+function HRHelper:changeAimbotSmoothness(val) AimbotSettings.Smoothness = val end
+function HRHelper:changeAimbotPrediction(val) AimbotSettings.Prediction = val end
 
 function HRHelper:silentAim()
     togSilentAim = not togSilentAim
@@ -213,9 +227,7 @@ function HRHelper:silentAim()
     end
 end
 
-function HRHelper:changeSilentChance(val)
-    AimbotSettings.SilentChance = val
-end
+function HRHelper:changeSilentChance(val) AimbotSettings.SilentChance = val end
 
 function HRHelper:esp()
     togEsp = not togEsp
