@@ -18,7 +18,7 @@ local hyper = {
         loadstring(link)()
     end,
     list = function()
-        if g == 17625359962 then return "rivals/rival" end
+        if game.GameId == 17625359962 then return "rivals/rival" end
         return nil
     end,
     fail = function()
@@ -40,4 +40,5 @@ if res then
     if not listRes then hyper.fail() return end
     local format = string.format("%smain/loader/%s.lua", github, listRes)
     hyper.load(format)
+    print(tostring(game.GameId))
 end
