@@ -7,6 +7,7 @@ local RS = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
 
 -- // STATES // --
 local togAimbot = false
@@ -15,14 +16,14 @@ local togEsp = false
 local togSpeed = false
 local ESP_Cache = {}
 
--- // SETTINGS (LENGKAP) // --
+-- // SETTINGS // --
 local AimbotSettings = {
     TeamCheck = true,
-    WallCheck = true,
+    WallCheck = false, -- Dimatikan dulu biar persis taka1337 (biar work)
     FOV = 120,
-    Smoothness = 0.7,
+    Smoothness = 0.5,
     Part = "Head",
-    Prediction = 1.2,
+    Prediction = 0.05, -- Nilai prediction biasanya kecil (0.01 - 0.1)
     UseMouse = true,
     SilentChance = 100
 }
@@ -39,40 +40,39 @@ FOVCircle.Transparency = 0.7
 FOVCircle.Color = Color3.fromRGB(0, 170, 255)
 FOVCircle.Visible = false
 
---- // CORE TARGETING LOGIC // ---
+--- // CORE TARGETING (TAKA1337 STYLE) // ---
 
 local function GetClosestTarget()
-    local CurrentCam = workspace.CurrentCamera
-    local closest, shortestDistance = nil, AimbotSettings.FOV
+    if not LocalPlayer.Character then return nil end
+    
+    local closest = nil
+    local shortestDistance = AimbotSettings.FOV
+    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer or not player.Character then continue end
         if AimbotSettings.TeamCheck and player.Team == LocalPlayer.Team then continue end
         
         local hum = player.Character:FindFirstChildOfClass("Humanoid")
-        local part = player.Character:FindFirstChild(AimbotSettings.Part)
+        if not hum or hum.Health <= 0 then continue end
         
-        if hum and hum.Health > 0 and part then
-            local screenPos, onScreen = CurrentCam:WorldToViewportPoint(part.Position)
-            if onScreen then
-                local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                
-                if distance < shortestDistance then
-                    -- Wallcheck manual
-                    local ray = CurrentCam:ViewportPointToRay(screenPos.X, screenPos.Y)
-                    local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
-                    
-                    if AimbotSettings.WallCheck then
-                        if raycastResult and raycastResult.Instance:IsDescendantOf(player.Character) then
-                            shortestDistance = distance
-                            closest = part
-                        end
-                    else
-                        shortestDistance = distance
-                        closest = part
-                    end
-                end
+        local targetPart = player.Character:FindFirstChild(AimbotSettings.Part)
+        if not targetPart then continue end
+        
+        local partPos = targetPart.Position
+        
+        -- Prediction Logic
+        if player.Character:FindFirstChild("HumanoidRootPart") then
+            partPos = partPos + (player.Character.HumanoidRootPart.Velocity * AimbotSettings.Prediction)
+        end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(partPos)
+        
+        if onScreen then
+            local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+            if distance < shortestDistance then
+                closest = targetPart
+                shortestDistance = distance
             end
         end
     end
@@ -82,66 +82,57 @@ end
 --- // MAIN LOOP // ---
 
 RS.RenderStepped:Connect(function()
-    local CurrentCamera = workspace.CurrentCamera
+    Camera = workspace.CurrentCamera
     FOVCircle.Position = Vector2.new(Mouse.X, Mouse.Y + 36)
     FOVCircle.Radius = AimbotSettings.FOV
     
-    -- AIMBOT LOGIC --
+    -- AIMBOT LOGIC (SMOOTH MOUSE)
     if togAimbot then
         local target = GetClosestTarget()
         if target then
-            -- Prediction Logic
-            local velocity = target.Parent.HumanoidRootPart.Velocity
-            local predictedPos = target.Position + (velocity * AimbotSettings.Prediction)
+            local targetPos = target.Position + (target.Parent.HumanoidRootPart.Velocity * AimbotSettings.Prediction)
+            local screenPoint = Camera:WorldToScreenPoint(targetPos)
             
-            if AimbotSettings.UseMouse then
-                local screenPoint = CurrentCamera:WorldToScreenPoint(predictedPos)
+            if screenPoint.Z > 0 then
                 local delta = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(Mouse.X, Mouse.Y))
                 mousemoverel(delta.X * AimbotSettings.Smoothness, delta.Y * AimbotSettings.Smoothness)
-            else
-                CurrentCamera.CFrame = CurrentCamera.CFrame:Lerp(CFrame.new(CurrentCamera.CFrame.Position, predictedPos), AimbotSettings.Smoothness)
             end
         end
     end
 
-    -- SILENT AIM LOGIC --
+    -- SILENT AIM (CFrame Snap)
     if togSilentAim and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
         if math.random(1, 100) <= AimbotSettings.SilentChance then
             local target = GetClosestTarget()
             if target then
-                local velocity = target.Parent.HumanoidRootPart.Velocity
-                local predictedPos = target.Position + (velocity * AimbotSettings.Prediction)
-                CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, predictedPos)
+                local targetPos = target.Position + (target.Parent.HumanoidRootPart.Velocity * AimbotSettings.Prediction)
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
             end
         end
     end
 
-    -- SPEED LOGIC --
+    -- SPEED & ESP LOGIC (Tetap Sama)
     if togSpeed and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = speedConfig.value
     end
-    
-    -- ESP LOGIC --
+
     if togEsp then
         for _, player in ipairs(Players:GetPlayers()) do
-            if player == LocalPlayer then continue end
+            if player == LocalPlayer or not player.Character then continue end
             local char = player.Character
-            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") and char:FindFirstChildOfClass("Humanoid").Health > 0 then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp and char.Humanoid.Health > 0 then
                 if not ESP_Cache[player] then
-                    ESP_Cache[player] = {
-                        Box = Drawing.new("Square"),
-                        Name = Drawing.new("Text"),
-                        Highlight = Instance.new("Highlight")
-                    }
+                    ESP_Cache[player] = {Box = Drawing.new("Square"), Name = Drawing.new("Text"), Highlight = Instance.new("Highlight")}
                 end
                 local esp = ESP_Cache[player]
-                local pos, onScreen = CurrentCamera:WorldToViewportPoint(char.HumanoidRootPart.Position)
+                local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 if onScreen then
                     local color = (player.Team ~= LocalPlayer.Team) and Color3.new(1,0,0) or Color3.new(0,1,0)
                     local sizeX, sizeY = 2000 / pos.Z, 3000 / pos.Z
                     esp.Box.Visible, esp.Box.Size, esp.Box.Position, esp.Box.Color = true, Vector2.new(sizeX, sizeY), Vector2.new(pos.X - sizeX / 2, pos.Y - sizeY / 2), color
                     esp.Name.Visible, esp.Name.Text, esp.Name.Position, esp.Name.Color = true, player.Name, Vector2.new(pos.X, pos.Y - sizeY / 2 - 15), color
-                    esp.Highlight.Enabled, esp.Highlight.Adornee, esp.Highlight.FillColor, esp.Highlight.Parent = true, char, color, char
+                    esp.Highlight.Enabled, esp.Highlight.Adornee, esp.Highlight.Parent = true, char, char
                 else
                     esp.Box.Visible, esp.Name.Visible, esp.Highlight.Enabled = false, false, false
                 end
@@ -155,89 +146,29 @@ RS.RenderStepped:Connect(function()
     end
 end)
 
---- // UI MENU (SEMUA SLIDER DI SINI) // ---
-
-HRSetting:addTab("Movements")
-HRSetting:addTab("Combat")
-HRSetting:addTab("Visual")
-
--- Movements
-HRSetting:addToggle("Movements", "Speed", "speed")
-HRSetting:addSlider("Movements", "Speed Slider", 16, 200, "changeSpeed")
-
--- Combat (LENGKAP)
-HRSetting:addToggle("Combat", "Aimbot", "aimbot")
-HRSetting:addToggle("Combat", "Aimbot Use Mouse", "usemouse")
-HRSetting:addSlider("Combat", "Aimbot Range", 50, 800, "changeAimbotRange")
---HRSetting:addSlider("Combat", "Aimbot Smoothness", 0.01, 1, "changeAimbotSmoothness")
---HRSetting:addSlider("Combat", "Aimbot Prediction", 0.001, 0.1, "changeAimbotPrediction")
-HRSetting:addToggle("Combat", "SilentAim", "silentAim")
-HRSetting:addSlider("Combat", "Silent Aim Chances", 1, 100, "changeSilentChance")
-
--- Visual
-HRSetting:addToggle("Visual", "Esp", "esp")
-HRSetting:addToggle("Visual", "SetEspType", "", true)
-HRSetting:addCheckbox("Visual", {{"EspName", "nameesp"}, {"EspBody", "bodyesp"}, {"EspAll", "allesp"}}, "EspAll")
-
---- // HELPER FUNCTIONS (STRUKTUR REQUEST) // ---
+--- // UI HELPERS (STRUKTUR REQUEST) // ---
 
 function HRHelper:speed()
     togSpeed = not togSpeed
-    if togSpeed then 
-        HRHelper.showToast("Speed : Enabled") 
-    else 
-        HRHelper.showToast("Speed : Disabled") 
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
-        end
-    end
+    if togSpeed then HRHelper.showToast("Speed : Enabled") else HRHelper.showToast("Speed : Disabled") end
 end
-
-function HRHelper:changeSpeed(val) speedConfig.value = val end
 
 function HRHelper:aimbot()
     togAimbot = not togAimbot
     FOVCircle.Visible = togAimbot
-    if togAimbot then 
-        HRHelper.showToast("Aimbot : Enabled") 
-    else 
-        HRHelper.showToast("Aimbot : Disabled") 
-    end
+    if togAimbot then HRHelper.showToast("Aimbot : Enabled") else HRHelper.showToast("Aimbot : Disabled") end
 end
-
-function HRHelper:usemouse()
-    AimbotSettings.UseMouse = not AimbotSettings.UseMouse
-    if AimbotSettings.UseMouse then 
-        HRHelper.showToast("Mode : Mouse Move") 
-    else 
-        HRHelper.showToast("Mode : Camera Lock") 
-    end
-end
-
-function HRHelper:changeAimbotRange(val) AimbotSettings.FOV = val end
-function HRHelper:changeAimbotSmoothness(val) AimbotSettings.Smoothness = val end
-function HRHelper:changeAimbotPrediction(val) AimbotSettings.Prediction = val end
 
 function HRHelper:silentAim()
     togSilentAim = not togSilentAim
-    if togSilentAim then 
-        HRHelper.showToast("Silent Aim : Enabled") 
-    else 
-        HRHelper.showToast("Silent Aim : Disabled") 
-    end
+    if togSilentAim then HRHelper.showToast("Silent Aim : Enabled") else HRHelper.showToast("Silent Aim : Disabled") end
 end
 
-function HRHelper:changeSilentChance(val) AimbotSettings.SilentChance = val end
-
-function HRHelper:esp()
-    togEsp = not togEsp
-    if togEsp then 
-        HRHelper.showToast("Esp : Enabled") 
-    else 
-        HRHelper.showToast("Esp : Disabled") 
-    end
+function HRHelper:changeAimbotRange(val) 
+    AimbotSettings.FOV = val 
 end
 
-function HRHelper:nameesp() espConfig.espTarget = "EspName" end
-function HRHelper:bodyesp() espConfig.espTarget = "EspBody" end
-function HRHelper:allesp() espConfig.espTarget = "EspAll" end
+function HRHelper:changeAimbotSmoothness(val) AimbotSettings.Smoothness = val end
+function HRHelper:changeAimbotPrediction(val) AimbotSettings.Prediction = val end
+function HRHelper:changeSpeed(val) speedConfig.value = val end
+function HRHelper:esp() togEsp = not togEsp end
