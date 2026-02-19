@@ -18,7 +18,7 @@ local hyper = {
         loadstring(link)()
     end,
     list = function()
-        if game.GameId == 17625359962 then return "rivals/rival" end
+        if game.GameId == 6035872082 then return "rivals/rival" end
         return nil
     end,
     fail = function()
