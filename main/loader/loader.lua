@@ -27,7 +27,6 @@ local hyper = {
         local re, set, help = tryCheck()
         if re then
             help.showToast("Game Not Supported")
-            task.wait(0.3)
             help.showToast("U Can Only Use Some Function")
         end
     end
