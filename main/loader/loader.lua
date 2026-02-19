@@ -31,7 +31,7 @@ local hyper = {
 }
 
 hyper.loadGUI()
-wait(1.5)
+wait(1)
 local res, set, help = tryCheck()
 local github = "https://raw.githubusercontent.com/khdbg765/hyperhub/refs/heads/main/"
 
